@@ -1,0 +1,6 @@
+docker exec -it user-activity-consumer-kafka-1 kafka-topics \
+  --create \
+  --topic user-activity \
+  --bootstrap-server localhost:9092 \
+  --partitions 1 \
+  --replication-factor 1
