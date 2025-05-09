@@ -1,7 +1,9 @@
 package com.aliceklim.user_activity_producer;
 
 import jakarta.annotation.PostConstruct;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 import org.apache.kafka.clients.producer.*;
 import org.apache.kafka.common.serialization.StringSerializer;
@@ -9,27 +11,35 @@ import java.util.*;
 
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class KafkaUserActivityProducer {
+
+    private final KafkaTemplate<String, String> kafkaTemplate;
+
     @PostConstruct
-    public void produceUserActivities() {
-        Properties props = new Properties();
-        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
-        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+    public void produceUserActivities() throws InterruptedException {
+        String user_topic = "user-activity";
+        String admin_topic = "admin-activity";
 
-        try (KafkaProducer<String, String> producer = new KafkaProducer<>(props)) {
-            String topic = "user-activity";
-
-            for (int i = 1; i <= 10; i++) {
-                String userActivity = String.format(
+        for (int i = 1; i <= 10; i++) {
+            if (i % 2 == 0){
+                String adminActivity = String.format(
                         "{\"user_id\": %d, \"action\": \"click\", \"timestamp\": %d}",
                         i, System.currentTimeMillis()
                 );
-                ProducerRecord<String, String> record = new ProducerRecord<>(topic, Integer.toString(i), userActivity);
-                producer.send(record);
+                kafkaTemplate.send(admin_topic, adminActivity);
             }
-
-            log.info("User activities sent successfully.");
+            String userActivity = String.format(
+                    "{\"user_id\": %d, \"action\": \"click\", \"timestamp\": %d}",
+                    i, System.currentTimeMillis()
+            );
+            Thread.sleep(getTimeout());
+            kafkaTemplate.send(user_topic, String.valueOf(i), userActivity);
         }
+    }
+
+    private long getTimeout(){
+        int timeout = new Random().nextInt(5) + 1;
+        return timeout * 1000L;
     }
 }
